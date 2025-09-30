@@ -168,21 +168,36 @@ app.delete("/jobs/:id", auth("EMPLOYER"), async (req, res) => {
 });
 
 // Admin: approve/reject
+// Approve a job
 app.put("/admin/jobs/:id/approve", auth("ADMIN"), async (req, res) => {
-  const job = await prisma.job.update({
-    where: { id: req.params.id },
-    data: { status: "APPROVED" },
-  });
-  res.json(job);
+  const { id } = req.params;
+  try {
+    const job = await prisma.job.update({
+      where: { id },
+      data: { status: "APPROVED" },
+    });
+    res.json(job);
+  } catch (error) {
+    console.error("Approve job failed:", error);
+    res.status(400).json({ error: "Failed to approve job" });
+  }
 });
 
+// Reject a job
 app.put("/admin/jobs/:id/reject", auth("ADMIN"), async (req, res) => {
-  const job = await prisma.job.update({
-    where: { id: req.params.id },
-    data: { status: "REJECTED" },
-  });
-  res.json(job);
+  const { id } = req.params;
+  try {
+    const job = await prisma.job.update({
+      where: { id },
+      data: { status: "REJECTED" },
+    });
+    res.json(job);
+  } catch (error) {
+    console.error("Reject job failed:", error);
+    res.status(400).json({ error: "Failed to reject job" });
+  }
 });
+
 
 // Get all users (Admin only)
 app.get("/admin/users", auth("ADMIN"), async (req, res) => {
@@ -206,10 +221,10 @@ app.get("/admin/users", auth("ADMIN"), async (req, res) => {
 
 // Public: browse jobs
 app.get("/jobs", async (req, res) => {
-  const { keyword, country, city } = req.query;
+  const { keyword, country, city, status } = req.query;
   let jobs = await prisma.job.findMany({
     where: {
-      status: "APPROVED",
+      status: status ? status : "APPROVED",
       expiresAt: { gt: new Date() },
       ...(keyword && { title: { contains: keyword, mode: "insensitive" } }),
       ...(country && { country }),

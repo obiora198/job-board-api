@@ -221,20 +221,50 @@ app.get("/admin/users", auth("ADMIN"), async (req, res) => {
 
 // Public: browse jobs
 app.get("/jobs", async (req, res) => {
-  const { keyword, country, city, status } = req.query;
-  let jobs = await prisma.job.findMany({
-    where: {
-      status: status ? status : "APPROVED",
-      expiresAt: { gt: new Date() },
-      ...(keyword && { title: { contains: keyword, mode: "insensitive" } }),
-      ...(country && { country }),
-      ...(city && { city }),
-    },
-    orderBy: { createdAt: "desc" },
-  });
-  res.json(jobs);
+  try {
+    const { keyword, country, city, status, datePosted } = req.query;
 
+    // Build filter object
+    const filters = {
+      status: status || "APPROVED",
+      expiresAt: { gt: new Date() },
+    };
+
+    if (keyword) {
+      filters.OR = [
+        { title: { contains: keyword, mode: undefined } },
+        { companyName: { contains: keyword, mode: undefined } },
+        { description: { contains: keyword, mode: undefined } },
+      ];
+    }
+
+    if (country) filters.country = country;
+    if (city) filters.city = city;
+
+    // Filter by date posted
+    if (datePosted) {
+      const now = new Date();
+      let since = null;
+
+      if (datePosted === "last-24-hours") since = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      if (datePosted === "last-7-days") since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      if (datePosted === "last-30-days") since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      if (since) filters.createdAt = { gte: since };
+    }
+
+    const jobs = await prisma.job.findMany({
+      where: filters,
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(jobs);
+  } catch (err) {
+    console.error("Error fetching jobs:", err);
+    res.status(500).json({ error: "Failed to fetch jobs" });
+  }
 });
+
 
 app.get("/jobs/mine", auth("EMPLOYER"), async (req, res) => {
   try {

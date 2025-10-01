@@ -232,9 +232,9 @@ app.get("/jobs", async (req, res) => {
 
     if (keyword) {
       filters.OR = [
-        { title: { contains: keyword, mode: undefined } },
-        { companyName: { contains: keyword, mode: undefined } },
-        { description: { contains: keyword, mode: undefined } },
+        { title: { contains: keyword } },
+        { companyName: { contains: keyword } },
+        { description: { contains: keyword } },
       ];
     }
 
